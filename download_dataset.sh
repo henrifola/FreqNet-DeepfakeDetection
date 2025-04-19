@@ -1,47 +1,77 @@
+#!/bin/bash
+
+set -e
 
 pwd=$(cd $(dirname $0); pwd)
-echo pwd: $pwd
+echo "Current directory: $pwd"
 
-# pip install gdown==4.7.1 
-
-mkdir dataset
+mkdir -p dataset
 cd dataset
 
-# --proxy http://ip:port
+# ---------- CNNDetection TEST SET ----------
+if [ ! -d "ForenSynths/test" ]; then
+    echo "[INFO] Downloading CNNDetection TEST set..."
+    if [ ! -f "CNN_synth_testset.zip" ]; then
+        wget https://huggingface.co/datasets/sywang/CNNDetection/resolve/main/CNN_synth_testset.zip
+    fi
+    unzip -o CNN_synth_testset.zip -d ForenSynths
+    rm CNN_synth_testset.zip
+else
+    echo "[SKIP] CNNDetection TEST set already exists."
+fi
 
-# https://github.com/peterwang512/CNNDetection
-gdown 'https://drive.google.com/u/0/uc?id=1z_fD3UKgWQyOTZIBbYSaQ-hz4AzUrLC1' -O CNN_synth_testset.zip   --continue
-tar -zxvf CNN_synth_testset.zip -C ./ForenSynths
-# https://github.com/chuangchuangtan/FreqNet-DeepfakeDetection
-# https://drive.google.com/drive/folders/11E0Knf9J1qlv2UuTnJSOFUjIIi90czSj?usp=sharing
-gdown https://drive.google.com/drive/folders/11E0Knf9J1qlv2UuTnJSOFUjIIi90czSj -O ./GANGen-Detection --folder
+# ---------- CNNDetection VAL SET ----------
+if [ ! -d "ForenSynths/val" ]; then
+    echo "[INFO] Downloading CNNDetection VAL set..."
+    if [ ! -f "progan_val.zip" ]; then
+        wget https://huggingface.co/datasets/sywang/CNNDetection/resolve/main/progan_val.zip
+    fi
+    unzip -o progan_val.zip -d ForenSynths
+    rm progan_val.zip
+else
+    echo "[SKIP] CNNDetection VAL set already exists."
+fi
 
-cd ./GANGen-Detection
-ls | xargs -I pa sh -c "tar -zxvf pa; rm pa"
-cd $pwd/dataset
+# ---------- CNNDetection TRAIN SET ----------
+if [ ! -d "ForenSynths/train" ]; then
+    echo "[INFO] Downloading CNNDetection TRAIN set..."
+    for i in {001..007}; do
+        file="progan_train.7z.$i"
+        if [ ! -f "$file" ]; then
+            echo "[INFO] Downloading $file ..."
+            wget https://huggingface.co/datasets/sywang/CNNDetection/resolve/main/$file
+        else
+            echo "[SKIP] $file already exists."
+        fi
+    done
 
+    echo "[INFO] Extracting .7z files..."
+    7z x -y progan_train.7z.001
 
-# # https://github.com/Yuheng-Li/UniversalFakeDetect
-# gdown 'https://drive.google.com/u/0/uc?id=1nkCXClC7kFM01_fqmLrVNtnOYEFPtWO-' -O diffusion_datasets.zip  --continue
-# unzip diffusion_datasets.zip -d ./UniversalFakeDetect
+    if [ -f "progan_train.zip" ]; then
+        unzip -o progan_train.zip -d ForenSynths
+        rm progan_train.zip
+    fi
 
+    rm progan_train.7z.*
+else
+    echo "[SKIP] CNNDetection TRAIN set already exists."
+fi
 
-# # https://github.com/ZhendongWang6/DIRE
-# # https://drive.google.com/drive/folders/1tKsOU-6FDdstrrKLPYuZ7RpQwtOSHxUD?usp=sharing
-# gdown https://drive.google.com/drive/folders/1tKsOU-6FDdstrrKLPYuZ7RpQwtOSHxUD -O ./DiffusionForensics --folder
+# ---------- GANGen-Detection ----------
+if [ ! -d "GANGen-Detection" ]; then
+    echo "[INFO] Downloading GANGen-Detection dataset..."
+    gdown https://drive.google.com/drive/folders/11E0Knf9J1qlv2UuTnJSOFUjIIi90czSj -O ./GANGen-Detection --folder
 
-# cd ./DiffusionForensics
-# ls | xargs -I pa sh -c "tar -zxvf pa; rm pa"
-# cd $pwd/dataset
+    cd GANGen-Detection
+    for file in *.tar.gz *.tgz *.tar; do
+        [ -e "$file" ] || continue
+        echo "[INFO] Extracting $file"
+        tar -zxvf "$file" && rm "$file"
+    done
+    cd ..
+else
+    echo "[SKIP] GANGen-Detection already exists."
+fi
 
-# # https://github.com/Ekko-zn/AIGCDetectBenchmark
-# # https://drive.google.com/drive/folders/1BUv1MT1cm90QN3WTMHLEr8PXBsKGxKC9?usp=sharing
-# gdown https://drive.google.com/drive/folders/1BUv1MT1cm90QN3WTMHLEr8PXBsKGxKC9 -O ./AIGCDetect_testset --folder
-# zip -s- test.zip -O test_full.zip
-# unzip test_full.zip -d ./AIGCDetect_testset
-# cd $pwd/dataset
-
-# gdown https://drive.google.com/drive/folders/14f0vApTLiukiPvIHukHDzLujrvJpDpRq -O ./Diffusion1kStep --folder
-# cd ./Diffusion1kStep
-# ls | xargs -I pa sh -c "tar -zxvf pa; rm pa"
-# cd $pwd/dataset
+echo "[DONE] All datasets are ready!"
