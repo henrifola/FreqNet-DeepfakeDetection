@@ -2,6 +2,7 @@ import functools
 import torch
 import torch.nn as nn
 from networks.freqnet import freqnet
+from networks import get_model_by_name
 from networks.base_model import BaseModel, init_weights
 
 
@@ -9,10 +10,13 @@ class Trainer(BaseModel):
     def name(self):
         return 'Trainer'
 
-    def __init__(self, opt):
+    def __init__(self, opt, model_name='freqnet1'):
         super(Trainer, self).__init__(opt)
 
-        self.model = freqnet()
+        # Change to dynamic model selection
+        #self.model = freqnet()
+        self.model = get_model_by_name(model_name)
+
         
         for name,pa in self.model.named_parameters():
             if pa.requires_grad: print('='*20, 'requires_grad Ture',name)

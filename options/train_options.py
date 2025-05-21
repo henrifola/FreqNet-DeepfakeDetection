@@ -22,5 +22,9 @@ class TrainOptions(BaseOptions):
         # parser.add_argument('--model_path')
         # parser.add_argument('--no_resize', action='store_true')
         # parser.add_argument('--no_crop', action='store_true')
+        # Dynamic model selection
+        parser.add_argument('--model_name', type=str, default='freqnet1',
+                            choices=['freqnet1', 'freqnet2', 'freqnet3'],
+                            help="Select which FreqNet variant to train")
         self.isTrain = True
         return parser

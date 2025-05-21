@@ -15,6 +15,23 @@ def get_dataset(opt):
 '''
 
 import os
+
+from networks.freqnet import FreqNet as FreqNet1
+from networks.freqnet2 import FreqNet as FreqNet2
+from networks.freqnet3 import FreqNet as FreqNet3
+
+
+def get_model_by_name(name):
+    if name == 'freqnet1':
+        return FreqNet1()
+    elif name == 'freqnet2':
+        return FreqNet2()
+    elif name == 'freqnet3':
+        return FreqNet3()
+    else:
+        raise ValueError(f"Unknown model name: {name}")
+    
+    
 def get_dataset(opt):
     classes = os.listdir(opt.dataroot) if len(opt.classes) == 0 else opt.classes
     if '0_real' not in classes or '1_fake' not in classes:

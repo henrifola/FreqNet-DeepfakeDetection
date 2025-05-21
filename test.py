@@ -12,18 +12,26 @@ import random
 
 
 DetectionTests = {
-                'ForenSynths': { 'dataroot'   : '/opt/data/private/DeepfakeDetection/ForenSynths/',
-                                 'no_resize'  : False, # Due to the different shapes of images in the dataset, resizing is required during batch detection.
-                                 'no_crop'    : True,
-                               },
-
-           'GANGen-Detection': { 'dataroot'   : '/opt/data/private/DeepfakeDetection/GANGen-Detection/',
-                                 'no_resize'  : True,
-                                 'no_crop'    : True,
-                               },
-
-                 }
-
+    # 'Original-Images': {
+    #     'dataroot': '/home/ubuntu/Development/FreqNet-DeepfakeDetection/dataset/ForenSynths/cyclegan/apple',
+    #     'no_resize': False,
+    #     'no_crop': True,
+    # },
+    # 'Partially-Noised': {
+    #     'dataroot': '/home/ubuntu/Development/FreqNet-DeepfakeDetection/dataset/perturbed-data/test/noise-50%',
+    #     'no_resize': False,
+    #     'no_crop': True,
+    # },
+    'Perturbed-Subset': {
+        'dataroot': '/home/ubuntu/Development/FreqNet-DeepfakeDetection/dataset/perturbed-data/test/ForenSynths',
+        'no_resize': False,
+        'no_crop': True,
+        'include_only': [
+            'progan', 'stylegan', 'stylegan2', 'biggan',
+            'cyclegan', 'stargan', 'gaugan', 'deepfake'
+        ]
+    },
+}
 
 opt = TestOptions().parse(print_options=False)
 print(f'Model_path {opt.model_path}')
@@ -36,27 +44,37 @@ model = freqnet(num_classes=1)
 # state_dict = torch.load(opt.model_path, map_location='cpu')['model']
 # pretrained_dict = OrderedDict()
 # for ki in state_dict.keys():
-    # pretrained_dict[ki[7:]] = deepcopy(state_dict[ki])
+#     pretrained_dict[ki[7:]] = deepcopy(state_dict[ki])
 # model.load_state_dict(pretrained_dict, strict=True)
 
 model.load_state_dict(torch.load(opt.model_path, map_location='cpu'), strict=True)
 model.cuda()
 model.eval()
 
-
 for testSet in DetectionTests.keys():
-    dataroot = DetectionTests[testSet]['dataroot']
+    test_config = DetectionTests[testSet]
+    dataroot = test_config['dataroot']
+    include_only = test_config.get('include_only', None)
     printSet(testSet)
 
-    accs = [];aps = []
+    accs = []
+    aps = []
     print(time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime()))
-    for v_id, val in enumerate(os.listdir(dataroot)):
-        opt.dataroot = '{}/{}'.format(dataroot, val)
-        opt.classes  = '' #os.listdir(opt.dataroot) if multiclass[v_id] else ['']
-        opt.no_resize = DetectionTests[testSet]['no_resize']
-        opt.no_crop   = DetectionTests[testSet]['no_crop']
-        acc, ap, _, _, _, _ = validate(model, opt)
-        accs.append(acc);aps.append(ap)
-        print("({} {:12}) acc: {:.1f}; ap: {:.1f}".format(v_id, val, acc*100, ap*100))
-    print("({} {:10}) acc: {:.1f}; ap: {:.1f}".format(v_id+1,'Mean', np.array(accs).mean()*100, np.array(aps).mean()*100));print('*'*25) 
+    v_id = 0
+    for val in sorted(os.listdir(dataroot)):
+        if include_only and val not in include_only:
+            continue  # skip folders not in the selected subset
 
+        opt.dataroot = f'{dataroot}/{val}'
+        opt.classes = ''  # os.listdir(opt.dataroot) if multiclass[v_id] else ['']
+        opt.no_resize = test_config['no_resize']
+        opt.no_crop = test_config['no_crop']
+
+        acc, ap, _, _, _, _ = validate(model, opt)
+        accs.append(acc)
+        aps.append(ap)
+        print(f"({v_id} {val:12}) acc: {acc*100:.1f}; ap: {ap*100:.1f}")
+        v_id += 1
+
+    print(f"({v_id} {'Mean':10}) acc: {np.mean(accs)*100:.1f}; ap: {np.mean(aps)*100:.1f}")
+    print('*' * 25)

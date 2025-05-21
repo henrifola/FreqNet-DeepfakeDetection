@@ -10,6 +10,10 @@ blur_count = 0
 compress_count = 0
 noise_count = 0
 
+# Global perturb options (set from argparse)
+PERTURB_TYPE = None  # 'blur', 'compress', 'noise', or None
+PERTURB_RATE = 0.5   # Default 50%
+
 def safe_imread(filepath):
     print(f"Reading image from: {filepath}")
     try:
@@ -27,8 +31,12 @@ def perturb_image(img):
     if img is None:
         raise ValueError("Received None image for perturbation.")
 
-    if random.random() < 0.5:
-        filter_choice = random.choice(['blur', 'compress', 'noise'])
+    if random.random() < PERTURB_RATE:
+        if PERTURB_TYPE:
+            filter_choice = PERTURB_TYPE
+        else:
+            filter_choice = random.choice(['blur', 'compress', 'noise'])
+
         print(f"Applying {filter_choice} perturbation")
 
         if filter_choice == 'blur':
@@ -109,14 +117,23 @@ def process_folder(src_folder, dst_folder):
             file_count += process_folder(src_item_path, dst_item_path)
         else:
             pass
-            
+
     return file_count
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("src_base")
-    parser.add_argument("dst_base")
+    parser.add_argument("src_base", help="Source folder base")
+    parser.add_argument("dst_base", help="Destination folder base")
+    parser.add_argument("--perturb_type", choices=['blur', 'compress', 'noise'], default=None,
+                        help="Which perturbation to apply (default: random choice)")
+    parser.add_argument("--perturb_rate", type=float, default=0.5,
+                        help="Probability of perturbing an image (default: 0.5)")
+
     args = parser.parse_args()
+
+    # Set global perturbation settings
+    PERTURB_TYPE = args.perturb_type
+    PERTURB_RATE = args.perturb_rate
 
     src_base = args.src_base
     dst_base = args.dst_base

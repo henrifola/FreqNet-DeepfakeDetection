@@ -46,7 +46,7 @@ def get_val_opt():
 if __name__ == '__main__':
     opt = TrainOptions().parse()
     # seed_torch(100)
-    Testdataroot = os.path.join(opt.dataroot, 'test')
+    Testdataroot = os.path.join(opt.dataroot, 'ForenSynths')
     opt.dataroot = '{}/{}/'.format(opt.dataroot, opt.train_split)
     Logger(os.path.join(opt.checkpoints_dir, opt.name, 'log.log'))
     print('  '.join(list(sys.argv)) )
@@ -57,7 +57,11 @@ if __name__ == '__main__':
     train_writer = SummaryWriter(os.path.join(opt.checkpoints_dir, opt.name, "train"))
     val_writer = SummaryWriter(os.path.join(opt.checkpoints_dir, opt.name, "val"))
     
-    model = Trainer(opt)
+    # model selection, to train from
+    #model = Trainer(opt)
+    #Dynamic selection
+    model = Trainer(opt, model_name=opt.model_name)
+
     
     def testmodel():
         print('*'*25);accs = [];aps = []

@@ -217,15 +217,14 @@ class FreqNet(nn.Module):
         
         
     def forward(self, x):
-        
-         ### HFRI
-        x = self.hfreqWH(x, 4)
-        x = F.conv2d(x, self.weight1, self.bias1, stride=1, padding=0)
-        x = F.relu(x, inplace=True)
     
         ### CRL block
         x = self.crl(x)  # New color relationship learning block
 
+        ### HFRI
+        x = self.hfreqWH(x, 4)
+        x = F.conv2d(x, self.weight1, self.bias1, stride=1, padding=0)
+        x = F.relu(x, inplace=True)
         
         ### HFRFC
         x = self.hfreqC(x, 4)
