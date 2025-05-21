@@ -57,7 +57,7 @@ class FreqNet(nn.Module):
     def __init__(self, block=Bottleneck, layers=[3, 4], num_classes=1, zero_init_residual=False):
         super(FreqNet, self).__init__()
 
-        # Pre-FFT conv layers
+        # Projection weights
         self.weight1 = nn.Parameter(torch.randn((64, 3, 1, 1)).cuda())
         self.bias1   = nn.Parameter(torch.randn((64,)).cuda())
         self.weight2 = nn.Parameter(torch.randn((64, 64, 1, 1)).cuda())
@@ -72,9 +72,9 @@ class FreqNet(nn.Module):
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc1 = nn.Linear(512, 1)
+        self.fc1 = nn.Linear(512, num_classes)
 
-        # Color conv layers
+        # CRL
         self.crl_weight1 = nn.Parameter(torch.randn(16, 3, 1, 1).cuda())
         self.crl_bias1 = nn.Parameter(torch.randn(16).cuda())
         self.crl_weight2 = nn.Parameter(torch.randn(32, 16, 1, 1).cuda())
@@ -82,7 +82,7 @@ class FreqNet(nn.Module):
         self.crl_weight3 = nn.Parameter(torch.randn(3, 32, 1, 1).cuda())
         self.crl_bias3 = nn.Parameter(torch.randn(3).cuda())
 
-        # Shared spectral convs
+        # FCL
         self.fcl_amp = conv1x1(3, 3)
         self.fcl_phase = conv1x1(3, 3)
 
@@ -137,7 +137,6 @@ class FreqNet(nn.Module):
         return F.relu(torch.real(x_re))
 
     def forward(self, x):
-        
         x = self.crl(x)
         x = self.hfreqWH(x, 4)
         x = F.relu(F.conv2d(x, self.weight1, self.bias1))

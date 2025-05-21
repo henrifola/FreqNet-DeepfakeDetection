@@ -217,42 +217,42 @@ class FreqNet(nn.Module):
         
         
     def forward(self, x):
-    
+        
+       
         ### CRL block
         x = self.crl(x)  # New color relationship learning block
+        
+        ### CLFCL — Channel-Learning Fourier Block, amplitude + phase
+        x_fft = torch.fft.fft2(x, norm="ortho")         # → [B, 3, H, W], complex FFT per channel
+        x_fft = torch.fft.fftshift(x_fft, dim=[-2, -1]) # Shift frequency center
 
-        ### HFRI
+        # Extract amplitude and phase from each channel
+        amp = torch.abs(x_fft)        # → [B, 3, H, W], real-valued magnitude spectrum
+        phase = torch.angle(x_fft)    # → [B, 3, H, W], real-valued phase spectrum
+
+        # Learn per-channel spectral features (cross-channel 1×1 conv)
+        amp_feat = F.relu(self.fcl1_amp(amp))       # Conv2d(3→3), learned amp features
+        phase_feat = F.relu(self.fcl1_phase(phase)) # Conv2d(3→3), learned phase features
+
+        # Reconstruct complex spectrum from learned amp & phase
+        real = amp_feat * torch.cos(phase_feat)     # → [B, 3, H, W]
+        imag = amp_feat * torch.sin(phase_feat)     # → [B, 3, H, W]
+        x_fft_processed = torch.complex(real, imag) # → [B, 3, H, W], learned spectrum
+
+        # Inverse FFT back to spatial domain
+        x_fft_processed = torch.fft.ifftshift(x_fft_processed, dim=[-2, -1])
+        x_ifft = torch.fft.ifft2(x_fft_processed, norm="ortho")
+        x = torch.real(x_ifft)                      # → [B, 3, H, W], real-valued spatial map
+        x = F.relu(x, inplace=True)
+        
+
+         ### HFRI
         x = self.hfreqWH(x, 4)
         x = F.conv2d(x, self.weight1, self.bias1, stride=1, padding=0)
         x = F.relu(x, inplace=True)
-        
+
         ### HFRFC
         x = self.hfreqC(x, 4)
-        
-        ### FCL
-        ### FCL — Channel-wise, amplitude + phase
-        x_fft = torch.fft.fft2(x, norm="ortho")
-        x_fft = torch.fft.fftshift(x_fft, dim=[-2, -1])
-
-        # Extract amplitude and phase
-        amp = torch.abs(x_fft)        # [B, 3, H, W]
-        phase = torch.angle(x_fft)    # [B, 3, H, W]
-
-        # Convolve each
-        amp_feat = F.relu(self.fcl1_amp(amp))
-        phase_feat = F.relu(self.fcl1_phase(phase))
-
-        # Reconstruct complex spectrum
-        real = amp_feat * torch.cos(phase_feat)
-        imag = amp_feat * torch.sin(phase_feat)
-        x_fft_processed = torch.complex(real, imag)
-
-        # Inverse FFT
-        x_fft_processed = torch.fft.ifftshift(x_fft_processed, dim=[-2, -1])
-        x_ifft = torch.fft.ifft2(x_fft_processed, norm="ortho")
-        x = torch.real(x_ifft)
-        x = F.relu(x, inplace=True)
-
 
         ### HFRFS
         x = self.hfreqWH(x, 4)
@@ -263,27 +263,12 @@ class FreqNet(nn.Module):
         x = self.hfreqC(x, 4)
         
         ### FCL
-        ### FCL — Channel-wise, amplitude + phase
-        x_fft = torch.fft.fft2(x, norm="ortho")
-        x_fft = torch.fft.fftshift(x_fft, dim=[-2, -1])
-
-        # Extract amplitude and phase
-        amp = torch.abs(x_fft)        # [B, 3, H, W]
-        phase = torch.angle(x_fft)    # [B, 3, H, W]
-
-        # Convolve each
-        amp_feat = F.relu(self.fcl1_amp(amp))
-        phase_feat = F.relu(self.fcl1_phase(phase))
-
-        # Reconstruct complex spectrum
-        real = amp_feat * torch.cos(phase_feat)
-        imag = amp_feat * torch.sin(phase_feat)
-        x_fft_processed = torch.complex(real, imag)
-
-        # Inverse FFT
-        x_fft_processed = torch.fft.ifftshift(x_fft_processed, dim=[-2, -1])
-        x_ifft = torch.fft.ifft2(x_fft_processed, norm="ortho")
-        x = torch.real(x_ifft)
+        x = torch.fft.fft2(x, norm="ortho")#,norm='forward'
+        x = torch.fft.fftshift(x, dim=[-2, -1]) 
+        x = torch.complex(self.realconv2(x.real), self.imagconv2(x.imag)) # check if we want different dimentions here
+        x = torch.fft.ifftshift(x, dim=[-2, -1])
+        x = torch.fft.ifft2(x, norm="ortho")
+        x = torch.real(x)
         x = F.relu(x, inplace=True)
 
 
@@ -298,27 +283,12 @@ class FreqNet(nn.Module):
         
         
          ### FCL
-        ### FCL — Channel-wise, amplitude + phase
-        x_fft = torch.fft.fft2(x, norm="ortho")
-        x_fft = torch.fft.fftshift(x_fft, dim=[-2, -1])
-
-        # Extract amplitude and phase
-        amp = torch.abs(x_fft)        # [B, 3, H, W]
-        phase = torch.angle(x_fft)    # [B, 3, H, W]
-
-        # Convolve each
-        amp_feat = F.relu(self.fcl1_amp(amp))
-        phase_feat = F.relu(self.fcl1_phase(phase))
-
-        # Reconstruct complex spectrum
-        real = amp_feat * torch.cos(phase_feat)
-        imag = amp_feat * torch.sin(phase_feat)
-        x_fft_processed = torch.complex(real, imag)
-
-        # Inverse FFT
-        x_fft_processed = torch.fft.ifftshift(x_fft_processed, dim=[-2, -1])
-        x_ifft = torch.fft.ifft2(x_fft_processed, norm="ortho")
-        x = torch.real(x_ifft)
+        x = torch.fft.fft2(x, norm="ortho")#,norm='forward'
+        x = torch.fft.fftshift(x, dim=[-2, -1]) 
+        x = torch.complex(self.realconv3(x.real), self.imagconv3(x.imag))
+        x = torch.fft.ifftshift(x, dim=[-2, -1])
+        x = torch.fft.ifft2(x, norm="ortho")
+        x = torch.real(x)
         x = F.relu(x, inplace=True)
 
         ### HFRFS
@@ -326,28 +296,14 @@ class FreqNet(nn.Module):
         x = F.conv2d(x, self.weight4, self.bias4, stride=2, padding=0)
         x = F.relu(x, inplace=True)
 
+        
         ### FCL
-        ### FCL — Channel-wise, amplitude + phase
-        x_fft = torch.fft.fft2(x, norm="ortho")
-        x_fft = torch.fft.fftshift(x_fft, dim=[-2, -1])
-
-        # Extract amplitude and phase
-        amp = torch.abs(x_fft)        # [B, 3, H, W]
-        phase = torch.angle(x_fft)    # [B, 3, H, W]
-
-        # Convolve each
-        amp_feat = F.relu(self.fcl1_amp(amp))
-        phase_feat = F.relu(self.fcl1_phase(phase))
-
-        # Reconstruct complex spectrum
-        real = amp_feat * torch.cos(phase_feat)
-        imag = amp_feat * torch.sin(phase_feat)
-        x_fft_processed = torch.complex(real, imag)
-
-        # Inverse FFT
-        x_fft_processed = torch.fft.ifftshift(x_fft_processed, dim=[-2, -1])
-        x_ifft = torch.fft.ifft2(x_fft_processed, norm="ortho")
-        x = torch.real(x_ifft)
+        x = torch.fft.fft2(x, norm="ortho")#,norm='forward'
+        x = torch.fft.fftshift(x, dim=[-2, -1]) 
+        x = torch.complex(self.realconv4(x.real), self.imagconv4(x.imag))
+        x = torch.fft.ifftshift(x, dim=[-2, -1])
+        x = torch.fft.ifft2(x, norm="ortho")
+        x = torch.real(x)
         x = F.relu(x, inplace=True)
 
         x = self.layer2(x)
